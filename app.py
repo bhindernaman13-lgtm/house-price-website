@@ -1,72 +1,54 @@
 import streamlit as st
 import pandas as pd
 import pickle
-import os
+from pathlib import Path
 
 # ====================================
-# 1. LOAD THE TRAINED MODEL
+# PATH SETUP (STREAMLIT SAFE)
 # ====================================
 
-# Get current working directory
-current_dir = os.getcwd()
-
-# Build full path of model file
-model_path = os.path.join(current_dir, "house_price_model.pkl")
-
-# Load model
-with open(model_path, "rb") as file:
-    model = pickle.load(file)
+BASE_DIR = Path(__file__).parent
+MODEL_PATH = BASE_DIR / "house_price_model.pkl"
+DATA_PATH = BASE_DIR / "Cleaned_data.csv"
 
 # ====================================
-# 2. LOAD CLEANED DATA (FOR LOCATIONS)
+# DEBUG: CHECK FILES EXIST
 # ====================================
 
-data_path = os.path.join(current_dir, "Cleaned_data.csv")
-data = pd.read_csv(data_path)
+if not MODEL_PATH.exists():
+    st.error("❌ Model file not found: house_price_model.pkl")
+    st.write("Files in directory:", list(BASE_DIR.iterdir()))
+    st.stop()
+
+if not DATA_PATH.exists():
+    st.error("❌ Data file not found: Cleaned_data.csv")
+    st.stop()
 
 # ====================================
-# 3. STREAMLIT PAGE SETTINGS
+# LOAD MODEL & DATA
 # ====================================
 
-st.set_page_config(
-    page_title="House Price Predictor",
-    page_icon="🏠",
-    layout="centered"
-)
+with open(MODEL_PATH, "rb") as f:
+    model = pickle.load(f)
+
+data = pd.read_csv(DATA_PATH)
+
+# ====================================
+# UI
+# ====================================
+
+st.set_page_config(page_title="House Price Predictor", layout="centered")
 
 st.title("🏠 Bangalore House Price Prediction")
-st.write("Fill the details below to predict house price")
-
-# ====================================
-# 4. USER INPUTS
-# ====================================
 
 location = st.selectbox(
     "Select Location",
     sorted(data["location"].unique())
 )
 
-total_sqft = st.number_input(
-    "Total Square Feet",
-    min_value=300.0,
-    step=50.0
-)
-
-bath = st.number_input(
-    "Number of Bathrooms",
-    min_value=1,
-    step=1
-)
-
-bhk = st.number_input(
-    "Number of BHK",
-    min_value=1,
-    step=1
-)
-
-# ====================================
-# 5. PREDICTION
-# ====================================
+total_sqft = st.number_input("Total Square Feet", min_value=300.0, step=50.0)
+bath = st.number_input("Bathrooms", min_value=1, step=1)
+bhk = st.number_input("BHK", min_value=1, step=1)
 
 if st.button("Predict Price"):
     input_df = pd.DataFrame(
@@ -74,8 +56,9 @@ if st.button("Predict Price"):
         columns=["location", "total_sqft", "bath", "bhk"]
     )
 
-    prediction = model.predict(input_df)[0]
+    price = model.predict(input_df)[0]
+    st.success(f"Estimated Price: ₹ {round(price, 2)} Lakhs")
 
-    st.success(f"Estimated House Price: ₹ {round(prediction, 2)} Lakhs")
+
 
 
